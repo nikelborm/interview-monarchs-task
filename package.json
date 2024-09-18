@@ -12,6 +12,7 @@
     "tsx": "^4.19.1"
   },
   "dependencies": {
-    "@types/node": "^22.5.5"
+    "@types/node": "^22.5.5",
+    "ts-toolbelt": "^9.6.0"
   }
 }

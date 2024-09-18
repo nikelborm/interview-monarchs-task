@@ -1,16 +1,12 @@
 type Merge<T> = { [P in keyof T]: T[P] } & {};
 
 type RemapEnumArrToObject<T extends Array<string> | Array<number>> =
-  T['length'] extends 0
-  ? {}
-  : T['length'] extends 1
-    ? { [k in T[0]] : T[0] }
-    : T extends [
-      infer U extends T[number],
-      ...infer Rest extends Array<string> | Array<number>
-    ]
-      ? { [k in U] : U } & RemapEnumArrToObject<Rest>
-      : never;
+  T extends [
+    infer U extends T[number],
+    ...infer Rest extends Array<string> | Array<number>
+  ]
+    ? { [k in U] : U } & RemapEnumArrToObject<Rest>
+    : {};
 
 const secureObject = (o: Record<string|number|symbol, any>) => {
   Object.seal(o);
@@ -50,8 +46,8 @@ const baseRules = new Set([
   'token [T] is in slot with index [N]',
 
   'there are exactly [N] spatial slots',
-  '[T] OR [U]', // ???
-  '[T] AND [U]', // ???
+  'OR [Rest]', // ???
+  'AND [Rest]', // ???
   'NOT [T]', // ???
   '[T] XOR [U]', // ???
 ]);
@@ -88,21 +84,183 @@ const possibleRules = new Set([
 
 const remapTokens = {
   'token [T] to the left of token [U]': {
-    requires: [
+    searchesFor: [
+      'there is token [T]',
       'there are exactly [N] spatial slots',
     ],
-    results: {
-      type: 'OR',
-      set: [
-        {
-          type: 'AND',
-          set: []
+    results(T: string, U: string, N: number) {
+      const condition = {
+        type: 'OR [Rest]',
+        args: { Rest: [] as any[] }
+      };
+      for (let i = 0; i < N - 1; i++) {
+        for (let j = i + 1; j < N; j++) {
+          condition.args.Rest.push({
+            type: 'AND [Rest]',
+            args: {
+              Rest: [{
+                type: 'token [T] is in slot with index [N]',
+                args: { T: T, N: i,}
+              }, {
+                type: 'token [T] is in slot with index [N]',
+                args: { T: U, N: j,}
+              }]
+            }
+          })
+
         }
-      ] // 
+      }
+      return condition;
     },
-  }
+  },
+  'token of type [T] to the left of token [U]': {
+    searchesFor: [
+      'there is token type [T]',
+      'there is token [U]',
+      'token [T] is of type [U]',
+      'there are exactly [N] spatial slots',
+    ],
+    results(tokensOptionsOfTypeT: string[], U: string) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: tokensOptionsOfTypeT.map(T => ({
+            type: 'token [T] to the left of token [U]',
+            args: { T, U }
+          }))
+        }
+      };
+    }
+  },
+  'token [T] to the left of token of type [U]': {
+    searchesFor: [
+      'there is token type [T]',
+      'there is token [U]',
+      'token [T] is of type [U]',
+      'there are exactly [N] spatial slots',
+    ],
+    results(T: string, tokensOptionsOfTypeU: string[]) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: tokensOptionsOfTypeU.map(U => ({
+            type: 'token [T] to the left of token [U]',
+            args: { T, U }
+          }))
+        }
+      };
+    }
+  },
+  'token of type [T] to the left of token of type [U]': {
+    searchesFor: [
+      'there is token type [T]',
+      'there is token [U]',
+      'token [T] is of type [U]',
+      'there are exactly [N] spatial slots',
+    ],
+    results(tokensOptionsOfTypeT: string[], tokensOptionsOfTypeU: string[]) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: tokensOptionsOfTypeT
+            .flatMap(T => tokensOptionsOfTypeU.map(U => ({ T, U })))
+            .map(args => ({
+              type: 'token [T] to the left of token [U]',
+              args
+            }))
+        }
+      };
+    }
+  },
+
+  'token [T] to the right of token [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'token [T] to the left of token [U]',
+        args: { T: U, U: T }
+      }
+    },
+  },
+  'token of type [T] to the right of token [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'token [T] to the left of token of type [U]',
+        args: { T: U, U: T }
+      }
+    },
+  },
+  'token [T] to the right of token of type [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'token of type [T] to the left of token [U]',
+        args: { T: U, U: T }
+      }
+    },
+  },
+  'token of type [T] to the right of token of type [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'token of type [T] to the left of token of type [U]',
+        args: { T: U, U: T }
+      }
+    },
+  },
+
+  'token of type [T] must have a neighbour token of type [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: [
+            'token of type [T] to the left of token of type [U]',
+            'token of type [T] to the right of token of type [U]',
+          ].map(type => ({ type, args: { T, U } })),
+        }
+      };
+    }
+  },
+  'token [T] must have a neighbour token of type [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: [
+            'token [T] to the left of token of type [U]',
+            'token [T] to the right of token of type [U]',
+          ].map(type => ({ type, args: { T, U } })),
+        }
+      };
+    }
+  },
+  'token of type [T] must have a neighbour token [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: [
+            'token of type [T] to the left of token [U]',
+            'token of type [T] to the right of token [U]',
+          ].map(type => ({ type, args: { T, U } })),
+        }
+      };
+    }
+  },
+  'token [T] must have a neighbour token [U]': {
+    results(T: string, U: string) {
+      return {
+        type: 'OR [Rest]',
+        args: {
+          Rest: [
+            'token [T] to the left of token [U]',
+            'token [T] to the right of token [U]',
+          ].map(type => ({ type, args: { T, U } })),
+        }
+      };
+    }
+  },
 }
 
+// (A && B && C) || D => (A && B && C) || D
 
 // есть infinite time-spatial slot sequence.
 // на неё можно накладывать правила.
@@ -122,8 +280,6 @@ const remapTokens = {
 
 // some rulesets are AND combination of few rulesets. some rulesets are OR combination of few rulesets.
 // AND rulesets are more restrictive than each of the individual rules. OR rulesets are more allowing than each of the individual rules
-
-// TODO: вспомни про какое-то правило, которое позволяет not or конвертировать в ! AND !
 
 
 // MONARCHS_ENGLISH.MICHAI_FEDOROVICH
