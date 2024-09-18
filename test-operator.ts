@@ -25,5 +25,3 @@ testComparator('4th custom xor using: !, &&, ||', (a, b) => (!a || !b) && (a || 
 testComparator('5th custom xor using: !, &&, ||', (a, b) => !( (a && b) || (!a && !b) )) // 6 ops
 
 testComparator('1st custom xor using: !, ||', (a, b) => !( !(!a || !b) || !(a || b) )) // 8 ops
-
-testComparator('2nd custom xor using: !, ||', (a, b) => (!a || !b) && (a || b)) // _ ops
