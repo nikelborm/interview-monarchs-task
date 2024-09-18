@@ -20,4 +20,10 @@ testComparator('2nd custom xor using: !, &&    ', (a, b) => !( !(a && !b) && !(!
 
 testComparator('1st custom xor using: !, &&, ||', (a, b) => !(a && b) && (a || b)) // 4 ops
 testComparator('2nd custom xor using: !, &&, ||', (a, b) => (a && !b) || (!a && b)) // 5 ops
-testComparator('3rd custom xor using: !, &&, ||', (a, b) => !( (a && b) || (!a && !b) )) // 6 ops
+testComparator('3rd custom xor using: !, &&, ||', (a, b) => !( (a && b) || !(a || b) )) // 5 ops
+testComparator('4th custom xor using: !, &&, ||', (a, b) => (!a || !b) && (a || b)) // 5 ops
+testComparator('5th custom xor using: !, &&, ||', (a, b) => !( (a && b) || (!a && !b) )) // 6 ops
+
+testComparator('1st custom xor using: !, ||', (a, b) => !( !(!a || !b) || !(a || b) )) // 8 ops
+
+testComparator('2nd custom xor using: !, ||', (a, b) => (!a || !b) && (a || b)) // _ ops
